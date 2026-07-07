@@ -1,0 +1,33 @@
+# ---- Environment & secrets — NEVER commit these ----
+.env
+.env.*
+!.env.example
+# Firebase / Google service-account keys
+*serviceAccount*.json
+firebase-*.json
+*-credentials.json
+gcloud-*.json
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# ---- Node / frontend ----
+node_modules/
+dist/
+.vite/
+
+# ---- Vercel ----
+.vercel
+
+# ---- OS / editors ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

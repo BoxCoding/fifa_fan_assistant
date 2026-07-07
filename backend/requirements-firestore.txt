@@ -1,0 +1,4 @@
+# Optional: enables the Firestore-backed user store.
+# Install with: pip install -r requirements-firestore.txt
+-r requirements.txt
+google-cloud-firestore>=2.16

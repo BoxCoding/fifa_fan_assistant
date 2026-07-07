@@ -1,0 +1,7 @@
+# Runtime dependencies (installed by Vercel). Unpinned lower-bounds so prebuilt
+# wheels are used on newer Python (3.13/3.14).
+fastapi>=0.115
+uvicorn[standard]>=0.30
+httpx>=0.27
+pydantic>=2.9
+python-dotenv>=1.0
