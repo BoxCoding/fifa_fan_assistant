@@ -1,17 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { api } from "../api.js";
+import { usePolling } from "../hooks/usePolling.js";
 
 // Sustainability KPI panel for the organizer view.
 export default function Sustainability({ stadiumId }) {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    let alive = true;
-    const load = () => api.sustainability(stadiumId).then((d) => alive && setData(d)).catch(() => {});
-    load();
-    const id = setInterval(load, 15000);
-    return () => { alive = false; clearInterval(id); };
-  }, [stadiumId]);
+  const data = usePolling(() => api.sustainability(stadiumId), 15000, [stadiumId]);
 
   const fmt = (m) => (m.unit === "%" ? `${m.value}%` : m.value.toLocaleString());
 

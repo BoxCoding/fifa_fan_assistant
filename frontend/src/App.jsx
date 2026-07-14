@@ -1,108 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import { auth } from "./auth.js";
+import { ROLE_CONFIG, STADIUM_ID, allowedRoles, roleName } from "./constants.js";
+import Bubble from "./components/Bubble.jsx";
 import Login from "./components/Login.jsx";
-import LiveOps from "./components/LiveOps.jsx";
-import Incidents from "./components/Incidents.jsx";
-import Tasks from "./components/Tasks.jsx";
-import Sustainability from "./components/Sustainability.jsx";
-
-const STADIUM_ID = "metlife";
-
-const ROLES = [
-  { id: "fan", name: "Fan", icon: "🎟️" },
-  { id: "volunteer", name: "Volunteer", icon: "🦺" },
-  { id: "staff", name: "Venue Staff", icon: "🎧" },
-  { id: "organizer", name: "Organizer", icon: "📋" },
-];
-
-// Privilege hierarchy — mirrors the backend. A user may act in any persona at
-// or below their own level, so we only render those tabs.
-const ROLE_LEVEL = { fan: 0, volunteer: 1, staff: 2, organizer: 3 };
-const allowedRoles = (userRole) =>
-  ROLES.filter((r) => ROLE_LEVEL[r.id] <= (ROLE_LEVEL[userRole] ?? 0));
-
-// Per-persona welcome + starter prompts (English only).
-const ROLE_CONFIG = {
-  fan: {
-    welcome:
-      "👋 Welcome to MetLife Stadium! I'm Kickoff, your World Cup 2026 assistant. Ask me about navigation, food, crowds, transport or accessibility.",
-    starters: [
-      { label: "🚻 Nearest restroom", q: "Where is the nearest restroom?" },
-      { label: "🥙 Halal food", q: "Where can I find halal food?" },
-      { label: "📊 How busy is it?", q: "How busy is the stadium right now?" },
-      { label: "🚆 Fastest way home", q: "What's the fastest way home right now?" },
-      { label: "♿ Wheelchair route", q: "I use a wheelchair, how do I get to my seat?" },
-      { label: "♻️ Where to recycle", q: "Where can I recycle my bottle?" },
-    ],
-  },
-  volunteer: {
-    welcome:
-      "🦺 Volunteer console. I can walk you through procedures step-by-step and show your live task list. How can I help?",
-    starters: [
-      { label: "📋 My tasks", q: "What are my current tasks?" },
-      { label: "🧒 Lost child", q: "How do I handle a lost child?" },
-      { label: "🚑 Medical emergency", q: "How do I handle a medical emergency?" },
-      { label: "♿ Assist wheelchair user", q: "How do I assist a wheelchair user?" },
-      { label: "🎫 Ticket dispute", q: "How do I handle a ticket dispute?" },
-    ],
-  },
-  staff: {
-    welcome:
-      "🎧 Venue staff console. I'll surface live incidents and the exact response procedures. Lead with the priority.",
-    starters: [
-      { label: "🚨 Open incidents", q: "What incidents are open right now?" },
-      { label: "🌊 Crowd surge SOP", q: "How do I handle a crowd surge?" },
-      { label: "🚪 Evacuation steps", q: "What is the evacuation procedure?" },
-      { label: "📊 Crowd status", q: "How busy is the venue right now?" },
-      { label: "🚆 Transport status", q: "What's the transport situation?" },
-    ],
-  },
-  organizer: {
-    welcome:
-      "📋 Organizer command view. Ask for a live operational briefing and I'll synthesise crowd, transport, incidents and sustainability into recommended decisions.",
-    starters: [
-      { label: "🧭 Operational briefing", q: "Give me the operational briefing" },
-      { label: "🚨 Open incidents", q: "What incidents are open right now?" },
-      { label: "♻️ Sustainability KPIs", q: "How are our sustainability metrics?" },
-      { label: "📊 Crowd status", q: "How busy is the venue right now?" },
-      { label: "🚆 Transport", q: "What's the transport situation?" },
-    ],
-  },
-};
-
-function Bubble({ msg }) {
-  const isUser = msg.role === "user";
-  return (
-    <div className={`bubble-row ${isUser ? "user" : "bot"}`}>
-      <div className={`bubble ${isUser ? "user" : "bot"}`}>
-        <div className="bubble-text">{msg.content}</div>
-        {msg.meta && (
-          <div className="bubble-meta">
-            <span className={`tag ${msg.meta.source}`}>{msg.meta.source === "llm" ? "AI" : "grounded"}</span>
-            <span className="tag intent">{msg.meta.intent}</span>
-            {msg.meta.cached && <span className="tag cached">⚡ cached</span>}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Right-hand panel adapts to the active persona.
-function SidePanel({ role }) {
-  if (role === "volunteer") return <aside className="liveops"><Tasks /></aside>;
-  if (role === "staff") return <aside className="liveops"><Incidents stadiumId={STADIUM_ID} /></aside>;
-  if (role === "organizer")
-    return (
-      <aside className="liveops">
-        <Incidents stadiumId={STADIUM_ID} compact />
-        <LiveOps stadiumId={STADIUM_ID} />
-        <Sustainability stadiumId={STADIUM_ID} />
-      </aside>
-    );
-  return <LiveOps stadiumId={STADIUM_ID} />; // fan
-}
+import SidePanel from "./components/SidePanel.jsx";
 
 export default function App() {
   const [user, setUser] = useState(() => auth.getUser());
@@ -251,8 +153,8 @@ export default function App() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={`Ask as ${ROLES.find((r) => r.id === role).name}…`}
-              aria-label={`Message the assistant as ${ROLES.find((r) => r.id === role).name}`}
+              placeholder={`Ask as ${roleName(role)}…`}
+              aria-label={`Message the assistant as ${roleName(role)}`}
             />
             <button type="submit" disabled={busy || !input.trim()}>Send</button>
           </form>

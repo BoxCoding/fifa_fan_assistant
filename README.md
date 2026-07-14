@@ -329,10 +329,14 @@ worldcup-fan-assistant/
 ├── frontend/
 │   └── src/
 │       ├── App.jsx            # auth gate + role switcher + chat UI
+│       ├── constants.js      # personas, hierarchy, per-role welcome/starters
 │       ├── api.js             # API client (attaches Bearer token)
 │       ├── auth.js            # token/user persistence
+│       ├── hooks/usePolling.js  # shared interval-fetch hook (DRY)
 │       └── components/
 │           ├── Login.jsx         # accessible login screen
+│           ├── Bubble.jsx        # a chat message
+│           ├── SidePanel.jsx     # per-persona right panel
 │           ├── LiveOps.jsx       # crowd + transport (fan/organizer)
 │           ├── Incidents.jsx     # incident console (staff/organizer)
 │           ├── Tasks.jsx         # volunteer task list

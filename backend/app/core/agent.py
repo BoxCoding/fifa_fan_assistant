@@ -24,6 +24,7 @@ from app.data.incidents import live_incidents
 from app.data.knowledge import KNOWLEDGE_BASE
 from app.data.procedures import find_procedure
 from app.data.stadiums import get_detail, get_venue
+from app.data.sustainability import sustainability_snapshot
 from app.models import Action, ChatMessage, ChatResponse
 
 # ---------------------------------------------------------------------------
@@ -126,88 +127,145 @@ ROLE_PROMPT = {
 
 # ---------------------------------------------------------------------------
 # Context building
+#
+# Each grounder returns (fact_lines, data_updates). `_build_context` composes the
+# ones relevant to the intent, so no single function carries every branch.
 # ---------------------------------------------------------------------------
+Grounding = tuple[list[str], dict]
+
+# Intents that surface stadium amenities near the fan.
+_AMENITY_INTENTS = {"navigation", "food", "accessibility", "sustainability", "general"}
+# Intents whose own live grounding replaces the generic knowledge base.
+_NO_KNOWLEDGE_INTENTS = {"incident", "task", "briefing"}
+
+
+def _ground_amenities(detail: dict, text: str) -> Grounding:
+    matches = _find_amenity(detail, text)
+    if not matches:
+        return [], {}
+    facts = [
+        f"Amenity: {a['name']} — near section {a['near_section']}, {a['level']} level "
+        f"(current queue ~{live.amenity_queue(a['id'])} people)."
+        for a in matches[:4]
+    ]
+    return facts, {"amenities": matches}
+
+
+def _ground_navigation(detail: dict) -> Grounding:
+    gates = "; ".join(f"{g['name']} ({g['side']}, serves {g['serves']})" for g in detail["gates"])
+    return [f"Gates: {gates}"], {"gates": detail["gates"]}
+
+
+def _ground_accessibility(detail: dict) -> Grounding:
+    services = detail["accessible_services"]
+    return ["Accessible services: " + " | ".join(services)], {"accessible_services": services}
+
+
+def _ground_crowd() -> Grounding:
+    snap = live.crowd_snapshot()
+    quietest = min(snap["zones"], key=lambda z: z["pct"])
+    fact = (
+        f"Live crowd: overall {snap['overall_level']}. Busiest: {snap['busiest_zone']}. "
+        f"Quietest right now: {quietest['name']} ({quietest['pct']}% full)."
+    )
+    return [fact], {"crowd": snap}
+
+
+def _ground_transport() -> Grounding:
+    snap = live.transport_snapshot()
+    modes = "; ".join(f"{m['name']} ~{m['wait_min']} min ({m['status']})" for m in snap["modes"])
+    fact = f"Live transport: {modes}. Recommended: {snap['recommended']} — {snap['recommended_reason']}"
+    return [fact], {"transport": snap}
+
+
+def _ground_procedure(text: str, role: str) -> Grounding:
+    scope = role if role in {"volunteer", "staff", "organizer"} else None
+    procs = find_procedure(text, scope)
+    if not procs:
+        return ["No specific SOP matched. Advise the user to radio the Command Centre for guidance."], {}
+    p = procs[0]
+    steps = " ".join(f"{i + 1}) {s}" for i, s in enumerate(p["steps"]))
+    return [f"SOP — {p['title']}: {steps}"], {"procedure": p}
+
+
+def _ground_incident() -> Grounding:
+    feed = live_incidents()
+    detail = " | ".join(
+        f"[{i['severity']}] {i['type']} at {i['zone']} — {i['status']} ({i['age_min']}m)"
+        for i in feed["incidents"][:5]
+    )
+    counts = feed["counts"]
+    fact = (
+        f"Open incidents: {feed['total_open']} ({counts['high']} high, "
+        f"{counts['medium']} medium, {counts['low']} low). {detail}"
+    )
+    return [fact], {"incidents": feed}
+
+
+def _ground_task() -> Grounding:
+    t = ops.volunteer_tasks()
+    listing = " | ".join(f"[{x['priority']}] {x['title']} @ {x['zone']}" for x in t["tasks"][:5])
+    return [f"Your task list ({t['urgent_count']} urgent): {listing}"], {"tasks": t}
+
+
+def _ground_briefing() -> Grounding:
+    facts, data = ops.briefing_facts()
+    return facts, data
+
+
+def _ground_sustainability() -> Grounding:
+    sus = sustainability_snapshot()
+    kpis = "; ".join(f"{m['label']} {m['value']}{m['unit']} (target {m['target']}{m['unit']})" for m in sus["metrics"])
+    return [f"Sustainability KPIs: {kpis}"], {"sustainability": sus}
+
+
+# Intents whose grounding takes no arguments.
+_SIMPLE_GROUNDERS = {
+    "crowd": _ground_crowd,
+    "transport": _ground_transport,
+    "incident": _ground_incident,
+    "task": _ground_task,
+    "briefing": _ground_briefing,
+}
+
+
 def _build_context(intent: str, text: str, role: str, detail: dict | None, venue: dict | None) -> tuple[str, dict]:
     """Assemble grounding text (most-relevant first) + structured data payload."""
     primary: list[str] = []
     data: dict = {}
 
-    # --- Fan-style grounding -------------------------------------------------
-    if detail and intent in {"navigation", "food", "accessibility", "sustainability", "general"}:
-        matches = _find_amenity(detail, text)
-        if matches:
-            data["amenities"] = matches
-            for a in matches[:4]:
-                q = live.amenity_queue(a["id"])
-                primary.append(f"Amenity: {a['name']} — near section {a['near_section']}, {a['level']} level (current queue ~{q} people).")
-        if intent == "accessibility":
-            data["accessible_services"] = detail["accessible_services"]
-            primary.append("Accessible services: " + " | ".join(detail["accessible_services"]))
-        if intent == "navigation":
-            data["gates"] = detail["gates"]
-            primary.append("Gates: " + "; ".join(f"{g['name']} ({g['side']}, serves {g['serves']})" for g in detail["gates"]))
-
-    if intent == "crowd":
-        snap = live.crowd_snapshot()
-        data["crowd"] = snap
-        quietest = min(snap["zones"], key=lambda z: z["pct"])
-        primary.append(f"Live crowd: overall {snap['overall_level']}. Busiest: {snap['busiest_zone']}. Quietest right now: {quietest['name']} ({quietest['pct']}% full).")
-
-    if intent == "transport":
-        snap = live.transport_snapshot()
-        data["transport"] = snap
-        primary.append("Live transport: " + "; ".join(f"{m['name']} ~{m['wait_min']} min ({m['status']})" for m in snap["modes"]) + f". Recommended: {snap['recommended']} — {snap['recommended_reason']}")
-
-    # --- Volunteer / staff: procedures --------------------------------------
-    if intent == "procedure":
-        procs = find_procedure(text, role if role in {"volunteer", "staff", "organizer"} else None)
-        if procs:
-            p = procs[0]
-            data["procedure"] = p
-            steps = " ".join(f"{i+1}) {s}" for i, s in enumerate(p["steps"]))
-            primary.append(f"SOP — {p['title']}: {steps}")
-        else:
-            primary.append("No specific SOP matched. Advise the user to radio the Command Centre for guidance.")
-
-    # --- Staff / organizer: incidents ---------------------------------------
-    if intent == "incident":
-        feed = live_incidents()
-        data["incidents"] = feed
-        primary.append(
-            f"Open incidents: {feed['total_open']} ({feed['counts']['high']} high, {feed['counts']['medium']} medium, {feed['counts']['low']} low). "
-            + " | ".join(f"[{i['severity']}] {i['type']} at {i['zone']} — {i['status']} ({i['age_min']}m)" for i in feed["incidents"][:5])
-        )
-
-    # --- Volunteer: tasks ----------------------------------------------------
-    if intent == "task":
-        t = ops.volunteer_tasks()
-        data["tasks"] = t
-        primary.append(
-            f"Your task list ({t['urgent_count']} urgent): "
-            + " | ".join(f"[{x['priority']}] {x['title']} @ {x['zone']}" for x in t["tasks"][:5])
-        )
-
-    # --- Organizer / staff: operational briefing ----------------------------
-    if intent == "briefing":
-        facts, bdata = ops.briefing_facts()
-        data.update(bdata)
+    def add(grounding: Grounding) -> None:
+        facts, updates = grounding
         primary.extend(facts)
+        data.update(updates)
 
-    # --- Sustainability KPIs -------------------------------------------------
-    if intent == "sustainability" and role == "organizer":
-        from app.data.sustainability import sustainability_snapshot
-        sus = sustainability_snapshot()
-        data["sustainability"] = sus
-        primary.append("Sustainability KPIs: " + "; ".join(f"{m['label']} {m['value']}{m['unit']} (target {m['target']}{m['unit']})" for m in sus["metrics"]))
+    # Fan-style amenity grounding, plus intent-specific extras.
+    if detail and intent in _AMENITY_INTENTS:
+        add(_ground_amenities(detail, text))
+        if intent == "accessibility":
+            add(_ground_accessibility(detail))
+        elif intent == "navigation":
+            add(_ground_navigation(detail))
 
-    # --- Supporting knowledge base ------------------------------------------
-    knowledge = [f"[{e['topic']}] {e['answer']}" for e in retrieve_knowledge(text)] if intent not in {"incident", "task", "briefing"} else []
+    if intent in _SIMPLE_GROUNDERS:
+        add(_SIMPLE_GROUNDERS[intent]())
+    elif intent == "procedure":
+        add(_ground_procedure(text, role))
+    elif intent == "sustainability" and role == "organizer":
+        add(_ground_sustainability())
 
-    header = []
+    # Supporting knowledge base (skipped for intents with their own live data).
+    if intent not in _NO_KNOWLEDGE_INTENTS:
+        primary.extend(f"[{e['topic']}] {e['answer']}" for e in retrieve_knowledge(text))
+
+    header: list[str] = []
     if venue:
-        header.append(f"Venue: {venue['name']} — {venue['city']}, {venue['country']} (capacity {venue['capacity']:,}; role: {venue['role']}).")
+        header.append(
+            f"Venue: {venue['name']} — {venue['city']}, {venue['country']} "
+            f"(capacity {venue['capacity']:,}; role: {venue['role']})."
+        )
 
-    return "\n".join(header + primary + knowledge), data
+    return "\n".join(header + primary), data
 
 
 def _fallback_reply(context: str) -> str:

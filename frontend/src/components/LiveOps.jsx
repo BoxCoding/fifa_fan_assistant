@@ -1,36 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { api } from "../api.js";
+import { usePolling } from "../hooks/usePolling.js";
 
 // Live operational-intelligence sidebar: crowd density per zone + transport
 // wait times, auto-refreshing every 10s. Demonstrates the crowd-management /
 // real-time decision-support angle for organisers and venue staff.
 export default function LiveOps({ stadiumId }) {
-  const [crowd, setCrowd] = useState(null);
-  const [transport, setTransport] = useState(null);
-
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const [c, t] = await Promise.all([
-          api.crowd(stadiumId),
-          api.transport(stadiumId),
-        ]);
-        if (alive) {
-          setCrowd(c);
-          setTransport(t);
-        }
-      } catch {
-        /* backend not ready yet — retry on next tick */
-      }
-    };
-    load();
-    const id = setInterval(load, 10000);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
-  }, [stadiumId]);
+  const snapshot = usePolling(
+    () => Promise.all([api.crowd(stadiumId), api.transport(stadiumId)]).then(([crowd, transport]) => ({ crowd, transport })),
+    10000,
+    [stadiumId]
+  );
+  const crowd = snapshot?.crowd;
+  const transport = snapshot?.transport;
 
   return (
     <aside className="liveops">

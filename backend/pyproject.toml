@@ -1,10 +1,6 @@
-[project]
-name = "kickoff-backend"
-version = "1.0.0"
-description = "Kickoff — GenAI stadium-operations & fan-experience platform for FIFA World Cup 2026."
-readme = "../README.md"
-requires-python = ">=3.11"
-license = { text = "MIT" }
+# Tool configuration only — intentionally NO [project] or [build-system] tables,
+# so platform Python builders (e.g. Vercel) keep installing from requirements.txt
+# and never try to build this directory as an installable package.
 
 [tool.ruff]
 line-length = 120

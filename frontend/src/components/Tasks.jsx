@@ -1,17 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { api } from "../api.js";
+import { usePolling } from "../hooks/usePolling.js";
 
 // Volunteer task list — urgent-first, blending live incidents with routine duties.
 export default function Tasks() {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    let alive = true;
-    const load = () => api.tasks().then((d) => alive && setData(d)).catch(() => {});
-    load();
-    const id = setInterval(load, 10000);
-    return () => { alive = false; clearInterval(id); };
-  }, []);
+  const data = usePolling(() => api.tasks(), 10000, []);
 
   return (
     <div className="panel">

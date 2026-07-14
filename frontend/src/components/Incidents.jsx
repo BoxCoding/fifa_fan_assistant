@@ -1,17 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { api } from "../api.js";
+import { usePolling } from "../hooks/usePolling.js";
 
 // Live incident console for venue staff & organizers. Auto-refreshes every 10s.
 export default function Incidents({ stadiumId, compact = false }) {
-  const [feed, setFeed] = useState(null);
-
-  useEffect(() => {
-    let alive = true;
-    const load = () => api.incidents(stadiumId).then((d) => alive && setFeed(d)).catch(() => {});
-    load();
-    const id = setInterval(load, 10000);
-    return () => { alive = false; clearInterval(id); };
-  }, [stadiumId]);
+  const feed = usePolling(() => api.incidents(stadiumId), 10000, [stadiumId]);
 
   return (
     <div className="panel">
