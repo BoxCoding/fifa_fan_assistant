@@ -1,0 +1,9 @@
+[run]
+source = app
+omit =
+    tests/*
+    api/*
+    scripts/*
+
+[report]
+show_missing = True

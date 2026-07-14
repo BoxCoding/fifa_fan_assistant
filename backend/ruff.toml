@@ -1,13 +1,12 @@
-# Tool configuration only — intentionally NO [project] or [build-system] tables,
-# so platform Python builders (e.g. Vercel) keep installing from requirements.txt
-# and never try to build this directory as an installable package.
+# Ruff config in a standalone file (not pyproject.toml) so platform Python
+# builders like Vercel/uv never try to treat this directory as a packaged
+# project — they just `pip install -r requirements.txt`.
 
-[tool.ruff]
 line-length = 120
 target-version = "py311"
 extend-exclude = [".venv"]
 
-[tool.ruff.lint]
+[lint]
 # A focused, high-signal rule set: pyflakes, pycodestyle, isort, bugbear,
 # comprehensions, pyupgrade, simplify.
 select = ["E", "F", "W", "I", "B", "C4", "UP", "SIM"]
@@ -16,17 +15,6 @@ ignore = [
     "B008",  # FastAPI uses `Depends(...)` as a default value by design
 ]
 
-[tool.ruff.lint.per-file-ignores]
+[lint.per-file-ignores]
 # Data modules are intentionally wide tables of records.
 "app/data/*.py" = ["E501"]
-
-[tool.pytest.ini_options]
-addopts = "-q"
-testpaths = ["tests"]
-
-[tool.coverage.run]
-source = ["app"]
-omit = ["tests/*", "api/*", "scripts/*"]
-
-[tool.coverage.report]
-show_missing = true
