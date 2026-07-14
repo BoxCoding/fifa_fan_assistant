@@ -8,7 +8,33 @@ in live venue data. English-language interface.
 
 > **Pitch & architecture:** see [`docs/PROPOSAL.md`](docs/PROPOSAL.md).
 
-![stack](https://img.shields.io/badge/backend-FastAPI-009688) ![stack](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61dafb) ![stack](https://img.shields.io/badge/LLM-Ollama%20(Gemma)-7c5cff)
+![stack](https://img.shields.io/badge/backend-FastAPI-009688) ![stack](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61dafb) ![stack](https://img.shields.io/badge/LLM-Gemini-7c5cff)
+
+---
+
+## Problem statement & how we address it
+
+> **Build a GenAI-enabled solution that enhances stadium operations and the overall
+> tournament experience for fans, organizers, volunteers, or venue staff — leveraging
+> Generative AI to improve navigation, crowd management, accessibility, transportation,
+> sustainability, multilingual assistance, operational intelligence, or real-time
+> decision support during the FIFA World Cup 2026.**
+
+Kickoff addresses **every** listed capability, for **all four** audiences, through one
+grounded GenAI assistant:
+
+| Challenge capability | How Kickoff delivers it | Where |
+|---|---|---|
+| **Navigation** | Section/gate/amenity lookup + step-by-step (accessible) routing narrated by the LLM | `/api/navigate`, agent `navigation` intent |
+| **Crowd management** | Live per-zone density + "quietest zone now"; redirect recommendations for staff | `/api/crowd`, `data/live.py`, briefing |
+| **Accessibility** | Step-free routes, sensory room, companion facilities; wheelchair intent prioritised; a11y-first UI | agent `accessibility`, `data/stadiums.py` |
+| **Transportation** | Live per-mode wait times + recommended option; egress nudges in the briefing | `/api/transport` |
+| **Sustainability** | Fan nudges (refill/recycle/transit) + organizer KPI dashboard vs. targets | `data/sustainability.py` |
+| **Operational intelligence** | Live incident feed + AI briefing synthesising crowd + transport + incidents | `/api/incidents`, `/api/ops/briefing` |
+| **Real-time decision support** | Deterministic, grounded recommended actions surfaced to staff/organizers | `data/ops.py` |
+
+**Audiences served:** 🎟️ Fans · 🦺 Volunteers · 🎧 Venue staff · 📋 Organizers — each with a
+tailored assistant, live panel, and role-scoped access.
 
 ---
 
@@ -223,12 +249,17 @@ curl -X POST localhost:8090/api/chat -H 'Content-Type: application/json' \
 ```bash
 cd backend && source .venv/bin/activate
 pip install -r requirements-dev.txt
-python -m pytest -q                          # 45 tests
-python -m pytest --cov=app --cov-report=term-missing   # with coverage (~73%)
+python -m pytest -q                          # 79 tests
+python -m pytest --cov=app --cov-report=term-missing   # with coverage (~90%)
+
+# Linting / formatting
+ruff check .                                 # backend (Python)
+cd ../frontend && npm run lint               # frontend (ESLint)
 ```
 Covers: security (hashing/tokens), authorization hierarchy, rate limiting, cache
-(incl. KV selection + degradation), LLM provider selection, Firestore fallback,
-and full auth + chat API integration.
+(incl. KV selection + degradation), LLM provider selection + success paths,
+Firestore fallback, every agent intent, all stadium/transport/ops endpoints, and
+full auth + chat API integration.
 
 ## Deploy to Vercel
 
@@ -241,7 +272,10 @@ Deploy backend and frontend as **two Vercel projects** from this one repo.
 - Set environment variables:
   - `GEMINI_API_KEY` — your Gemini key (Vercel encrypts it)
   - `KICKOFF_SECRET_KEY` — a long random string (signs auth tokens)
-  - `KICKOFF_CORS_ORIGINS` — your frontend URL, e.g. `https://kickoff.vercel.app`
+  - CORS: any `*.vercel.app` origin is allowed by default (`KICKOFF_CORS_ORIGIN_REGEX`),
+    so cross-origin login works out of the box. To lock it down, set
+    `KICKOFF_CORS_ORIGINS` to your exact frontend URL and clear the regex.
+  - **After deploying, sanity-check** `https://<backend>.vercel.app/health` returns JSON.
   - *(optional, Firestore user store)* `FIRESTORE_PROJECT_ID` +
     `FIREBASE_SERVICE_ACCOUNT_JSON` (paste the service-account JSON), and add
     `google-cloud-firestore` to `requirements.txt` for the deployed build

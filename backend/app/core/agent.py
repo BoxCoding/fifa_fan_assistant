@@ -18,13 +18,13 @@ from __future__ import annotations
 
 from app.core import cache
 from app.core.llm import LLMUnavailable, generate
+from app.core.matching import kw_hit  # word-boundary keyword matcher
 from app.data import live, ops
 from app.data.incidents import live_incidents
 from app.data.knowledge import KNOWLEDGE_BASE
 from app.data.procedures import find_procedure
 from app.data.stadiums import get_detail, get_venue
 from app.models import Action, ChatMessage, ChatResponse
-from app.core.matching import kw_hit  # word-boundary keyword matcher
 
 # ---------------------------------------------------------------------------
 # Intent definitions
@@ -252,7 +252,7 @@ _ACTIONS = {
 def _suggest_actions(role: str, intent: str) -> list[Action]:
     role_map = _ACTIONS.get(role, _ACTIONS["fan"])
     pairs = role_map.get(intent) or role_map.get("general") or _ACTIONS["fan"]["general"]
-    return [Action(label=l, query=q) for l, q in pairs]
+    return [Action(label=label, query=query) for label, query in pairs]
 
 
 # ---------------------------------------------------------------------------

@@ -38,6 +38,10 @@ class Settings:
         "KICKOFF_CORS_ORIGINS",
         "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173",
     ).split(",")
+    # Regex origin allow-list. Defaults to any *.vercel.app deployment so the
+    # frontend works once deployed without pinning the exact URL. Set to your
+    # own domain in production if you want to lock it down.
+    CORS_ORIGIN_REGEX: str = os.getenv("KICKOFF_CORS_ORIGIN_REGEX", r"https://.*\.vercel\.app")
 
     # LLM configuration. When the provider is unreachable the agent transparently
     # falls back to a deterministic template engine so demos never break.

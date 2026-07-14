@@ -11,8 +11,6 @@ from __future__ import annotations
 import math
 import time
 
-from app.data.stadiums import METLIFE
-
 # Zones we report density for — roughly one per gate/concourse cluster.
 ZONES = [
     {"id": "gate_a", "name": "Gate A / West Concourse", "capacity": 8000},

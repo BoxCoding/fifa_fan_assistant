@@ -20,7 +20,7 @@ export default function LiveOps({ stadiumId }) {
           setCrowd(c);
           setTransport(t);
         }
-      } catch (e) {
+      } catch {
         /* backend not ready yet — retry on next tick */
       }
     };

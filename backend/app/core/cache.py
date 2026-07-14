@@ -32,7 +32,7 @@ _hits = 0
 _misses = 0
 
 # In-memory backend: key -> (expires_at, json_string)
-_store: "OrderedDict[str, tuple[float, str]]" = OrderedDict()
+_store: OrderedDict[str, tuple[float, str]] = OrderedDict()
 
 
 def make_key(role: str, message: str) -> str:

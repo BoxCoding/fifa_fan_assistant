@@ -178,16 +178,17 @@ export default function App() {
 
   return (
     <div className="app">
+      <a href="#main-content" className="skip-link">Skip to conversation</a>
       <header className="topbar">
         <div className="brand">
-          <span className="logo">⚽</span>
+          <span className="logo" aria-hidden="true">⚽</span>
           <div>
             <h1>Kickoff</h1>
             <p>FIFA World Cup 2026 · Stadium Operations &amp; Fan Experience</p>
           </div>
         </div>
         <div className="topbar-right">
-          <div className="roles" role="tablist">
+          <div className="roles" role="tablist" aria-label="Choose persona">
             {allowedRoles(user.role).map((r) => (
               <button
                 key={r.id}
@@ -219,14 +220,21 @@ export default function App() {
       </header>
 
       <div className="layout">
-        <main className="chat">
-          <div className="messages" ref={scrollRef}>
+        <main className="chat" id="main-content">
+          <div
+            className="messages"
+            ref={scrollRef}
+            role="log"
+            aria-live="polite"
+            aria-label="Assistant conversation"
+          >
             {messages.map((m, i) => (
               <Bubble key={i} msg={m} />
             ))}
             {busy && (
-              <div className="bubble-row bot">
-                <div className="bubble bot typing"><span></span><span></span><span></span></div>
+              <div className="bubble-row bot" role="status">
+                <span className="sr-only">Assistant is typing…</span>
+                <div className="bubble bot typing" aria-hidden="true"><span></span><span></span><span></span></div>
               </div>
             )}
           </div>
@@ -239,12 +247,12 @@ export default function App() {
             ))}
           </div>
 
-          <form className="composer" onSubmit={(e) => { e.preventDefault(); send(); }}>
+          <form className="composer" aria-busy={busy} onSubmit={(e) => { e.preventDefault(); send(); }}>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={`Ask as ${ROLES.find((r) => r.id === role).name}…`}
-              aria-label="Message"
+              aria-label={`Message the assistant as ${ROLES.find((r) => r.id === role).name}`}
             />
             <button type="submit" disabled={busy || !input.trim()}>Send</button>
           </form>

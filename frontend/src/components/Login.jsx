@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { api } from "../api.js";
+import { api, ApiUnreachable } from "../api.js";
 
 // Accessible login screen. On success, hands the token + user up to <App/>.
 export default function Login({ onLogin }) {
@@ -17,7 +17,12 @@ export default function Login({ onLogin }) {
       const res = await api.login(username.trim(), password);
       onLogin(res.token, res.user);
     } catch (err) {
-      setError("Invalid username or password.");
+      // Distinguish real bad-credentials from the API being unreachable, so a
+      // misconfigured deployment doesn't masquerade as a wrong password.
+      if (err instanceof ApiUnreachable) setError(err.message);
+      else if (err.status === 429) setError("Too many attempts. Please wait a minute and try again.");
+      else if (err.status === 401) setError("Invalid username or password.");
+      else setError("Login failed. Please try again.");
     } finally {
       setBusy(false);
     }

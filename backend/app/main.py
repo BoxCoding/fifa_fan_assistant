@@ -31,6 +31,7 @@ app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=settings.CORS_ORIGIN_REGEX or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,4 +60,6 @@ async def health() -> dict:
         "demo_mode": settings.DEMO_MODE,
         "llm": await llm_health(),
         "cache": cache.stats(),
+        # Surfaced so a deployment's CORS config can be verified from the browser.
+        "cors": {"origins": settings.CORS_ORIGINS, "origin_regex": settings.CORS_ORIGIN_REGEX},
     }

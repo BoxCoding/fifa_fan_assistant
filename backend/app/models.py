@@ -1,10 +1,9 @@
 """Pydantic request/response schemas shared across routers."""
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Chat
@@ -39,7 +38,7 @@ class ChatResponse(BaseModel):
     source: Literal["llm", "fallback"]
     cached: bool = False
     actions: list[Action] = Field(default_factory=list)
-    data: Optional[dict[str, Any]] = None
+    data: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,36 @@
+[project]
+name = "kickoff-backend"
+version = "1.0.0"
+description = "Kickoff — GenAI stadium-operations & fan-experience platform for FIFA World Cup 2026."
+readme = "../README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+# A focused, high-signal rule set: pyflakes, pycodestyle, isort, bugbear,
+# comprehensions, pyupgrade, simplify.
+select = ["E", "F", "W", "I", "B", "C4", "UP", "SIM"]
+ignore = [
+    "E501",  # line length is handled by the formatter, not enforced hard
+    "B008",  # FastAPI uses `Depends(...)` as a default value by design
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Data modules are intentionally wide tables of records.
+"app/data/*.py" = ["E501"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*", "api/*", "scripts/*"]
+
+[tool.coverage.report]
+show_missing = true
