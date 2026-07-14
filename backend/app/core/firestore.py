@@ -30,8 +30,11 @@ _client_cache: object = _UNSET
 def _build_client():
     try:
         from google.cloud import firestore  # lazy import — optional dependency
-    except ImportError:
-        logger.info("google-cloud-firestore not installed; Firestore disabled")
+    except Exception as exc:
+        # Not just ImportError: on some Pythons the package imports but its native
+        # deps (grpc/protobuf) fail to load with other exception types. Any import
+        # failure must disable Firestore, never crash the request.
+        logger.info("Firestore unavailable (%s); disabled, using demo user fallback", exc)
         return None
     try:
         if settings.FIREBASE_SERVICE_ACCOUNT_JSON:

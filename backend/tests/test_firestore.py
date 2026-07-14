@@ -26,6 +26,15 @@ def test_unknown_user_lookup_is_none():
     assert auth.get_user_record("nobody") is None
 
 
+def test_firestore_error_falls_back_to_demo(monkeypatch):
+    # If Firestore raises (e.g. broken native deps), user lookup must still work.
+    def boom():
+        raise RuntimeError("grpc failed to load")
+
+    monkeypatch.setattr(firestore, "is_enabled", boom)
+    assert auth.get_user_record("organizer")["role"] == "organizer"
+
+
 def test_firestore_preferred_when_enabled(monkeypatch):
     # Simulate an enabled Firestore returning a user; it should win over demo.
     fs_user = {"salt": "aa", "hash": "bb", "role": "staff", "name": "From Firestore"}

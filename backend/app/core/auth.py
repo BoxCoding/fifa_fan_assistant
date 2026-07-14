@@ -55,11 +55,18 @@ def can_access(user_role: str, target_role: str) -> bool:
 
 
 def get_user_record(username: str) -> dict | None:
-    """Look up a user, preferring Firestore, then the built-in demo store."""
-    if firestore.is_enabled():
-        record = firestore.get_user(username)
-        if record:
-            return record
+    """Look up a user, preferring Firestore, then the built-in demo store.
+
+    Any Firestore failure degrades to the demo store — user lookup must never
+    raise into the request handler (that would turn a login into a 500).
+    """
+    try:
+        if firestore.is_enabled():
+            record = firestore.get_user(username)
+            if record:
+                return record
+    except Exception:  # pragma: no cover - defensive; Firestore never blocks login
+        pass
     return USERS.get(username)
 
 
